@@ -1,0 +1,63 @@
+- hosts: all
+  become: true
+  tasks:
+  - name: Install yum utilities
+    yum: 
+      name: "{{ packages }}"
+    vars:
+      packages:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+  
+  - name: Add docker repository
+    yum_repository:
+        name: docker-repo
+        description: Docker Yum repository
+        baseurl: https://download.docker.com/linux/centos/docker-ce.repo
+
+  - name: Install Docker
+    yum:
+      name: "{{ packages }}"
+    vars: 
+      packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    notify: 
+      - docker status
+
+  - name: Add vagrant user to docker group
+    user:
+      name: vagrant
+      group: docker
+  
+  - name: Disable SWAP since kubernetes can't work with swap enabled
+    shell: |
+        sed -i '/swap/d' /etc/fstab
+        swapoff -a
+  
+  - name: Add yum repo for kubernetes
+    yum_repository: 
+      name: kubernetes
+      enabled: yes
+      gpgcheck: yes
+      baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+      gpgcakey: "https://packages.cloud.google.com/yum/doc/yum-key.gpg\nhttps://packages.cloud.google.com/yum/doc/rpm-package-key.gpg"
+      state: present
+  
+  - name: Install kubernetes (kubeadm, kubelet and kubectl)
+    yum:
+      name: "{{ packages }}"
+    vars:
+      packages:
+      - kubeadm
+      - kubelet
+      - kubectl
+
+  - name: Restart kubelet
+    service:
+      name: kubelet
+      daemon_reload: yes
+      state: restarted
+      
