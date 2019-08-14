@@ -40,4 +40,23 @@ Vagrant.configure("2") do |config|
     end
   end
   end
+
+  config.vm.define "rancher-master" do |rmaster|
+    rmaster.vm.box = "centos/7"
+    rmaster.vm.hostname = "rancher.test.com"
+    rmaster.vm.network "private_network", ip: "172.168.10.99"
+    rmaster.vm.network "forwarded_port", guest: 80, host: 80
+    rmaster.vm.network "forwarded_port", guest: 443, host: 8443
+    rmaster.vm.provision "ansible" do |ansible|
+      ansible.playbook = "ansible-stuff/rancher-playbook.yml"
+      ansible.extra_vars = {
+        node_ip: "172.168.10.99"
+      }
+    end
+    rmaster.vm.provider "virtualbox" do |v|
+      v.name = "rmaster"
+      v.memory = 2048
+      v.cpus = 2
+    end
+  end
 end

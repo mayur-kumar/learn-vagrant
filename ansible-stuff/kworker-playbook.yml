@@ -17,8 +17,8 @@
   - name: Add IPTable Rules
     command: "{{ item }}"
     with_items:
-      - iptables -A INPUT -i eth1 -m iprange --src-range 172.168.10.100-172.168.10.102 -j ACCEPT
-      - iptables -A OUTPUT -d eth1 -m iprange --src-range 172.168.10.100-172.168.10.102 -j ACCEPT
+      - iptables -A INPUT -i eth1 -m iprange --src-range 172.168.10.99-172.168.10.102 -j ACCEPT
+      - iptables -A OUTPUT -d eth1 -m iprange --src-range 172.168.10.99-172.168.10.102 -j ACCEPT
 
   - name: Install Docker
     yum:
