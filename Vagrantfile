@@ -34,10 +34,10 @@ Vagrant.configure("2") do |config|
         }
       worker.vm.provider "virtualbox" do |v|
         v.name = "kworker#{i}"
-        v.memory = 2048
+        v.memory = 1024
         v.cpus = 1
       end
     end
   end
-
   end
+end

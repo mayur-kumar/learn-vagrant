@@ -2,7 +2,7 @@
 
 This project is to learn and experiment with vagrant and ansible.
 
-### Why this?
+### Why this
 
 1. Its a playground to experiment and learn vagrant, ansible, k8s and bunch of other stuff.
 2. Its fun.
@@ -11,8 +11,9 @@ This project is to learn and experiment with vagrant and ansible.
 
 * VirtualBox
 * Vagrant
+* Ansible
 
-### How to use it?
+### How to use it
 
 Its really simple, just copy and paste the following:
 

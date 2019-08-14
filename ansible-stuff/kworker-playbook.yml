@@ -10,27 +10,63 @@
       - device-mapper-persistent-data
       - lvm2
   
-  - name: Add docker repository
-    yum_repository:
-        name: docker-repo
-        description: Docker Yum repository
-        baseurl: https://download.docker.com/linux/centos/docker-ce.repo
+  - name: Add Docker repository
+    shell: |
+      sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  
+  - name: Add IPTable Rules
+    command: "{{ item }}"
+    with_items:
+      - iptables -A INPUT -i eth1 -m iprange --src-range 172.168.10.100-172.168.10.102 -j ACCEPT
+      - iptables -A OUTPUT -d eth1 -m iprange --src-range 172.168.10.100-172.168.10.102 -j ACCEPT
 
   - name: Install Docker
     yum:
       name: "{{ packages }}"
     vars: 
       packages:
-      - docker-ce
-      - docker-ce-cli
+      - docker-ce-18.06.2.ce
       - containerd.io
-    notify: 
-      - docker status
+    notify:
+     - docker status
+
+  - name: Setup docker daemon
+    shell: |
+      mkdir /etc/docker
+      cat > /etc/docker/daemon.json <<EOF
+      {
+        "exec-opts": ["native.cgroupdriver=systemd"],
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "100m"
+        },
+        "storage-driver": "overlay2",
+        "storage-opts": [
+          "overlay2.override_kernel_check=true"
+        ]
+      }
+      EOF
+      mkdir -p /etc/systemd/system/docker.service.d
+  
+  - name: Restart docker
+    service:
+      name: docker
+      daemon_reload: yes
+      state: restarted
 
   - name: Add vagrant user to docker group
     user:
       name: vagrant
       group: docker
+
+  - name: Add systemctl settings
+    shell: |
+      echo "[TASK 6] Add sysctl settings"
+      cat >>/etc/sysctl.d/kubernetes.conf<<EOF
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      EOF
+      sysctl --system >/dev/null 2>&1
   
   - name: Disable SWAP since kubernetes can't work with swap enabled
     shell: |
@@ -40,10 +76,11 @@
   - name: Add yum repo for kubernetes
     yum_repository: 
       name: kubernetes
+      description: Kubernetes Repo
       enabled: yes
       gpgcheck: yes
       baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-      gpgcakey: "https://packages.cloud.google.com/yum/doc/yum-key.gpg\nhttps://packages.cloud.google.com/yum/doc/rpm-package-key.gpg"
+      gpgkey: "https://packages.cloud.google.com/yum/doc/yum-key.gpg\nhttps://packages.cloud.google.com/yum/doc/rpm-package-key.gpg"
       state: present
   
   - name: Install kubernetes (kubeadm, kubelet and kubectl)
@@ -54,10 +91,22 @@
       - kubeadm
       - kubelet
       - kubectl
+  
+  - name: Enable kubelt and docker service
+    command: systemctl enable kubelet docker
 
   - name: Restart kubelet
     service:
       name: kubelet
       daemon_reload: yes
       state: restarted
-      
+
+  - name: Copy join command
+    copy: src=joinCommand dest=/tmp/joinCommand.sh mode=0777
+
+  - name: Join the cluster
+    command: sh /tmp/joinCommand.sh
+
+  handlers:
+    - name: docker status
+      service: name=docker state=started
